@@ -63,3 +63,17 @@ Both the **Backend API** and the **HTML Frontend** are served by the same single
 3. **Extraction**: The AI models will process the text, extract relationships, and build a structured "Knowledge Graph".
 4. **Chat**: Once the pipeline is complete, you can use the chat interface to ask specific questions about the data it found.
 To stop the app when you are done, go to both terminal windows and press `Ctrl + C`. Then type `deactivate` to exit the virtual environment.
+Software Requirements
+fastapi>=0.100.0
+uvicorn>=0.30.0
+pandas>=2.0.0
+openpyxl>=3.1.0
+python-dotenv>=1.0.0
+groq>=0.5.0
+cerebras-cloud-sdk>=1.0.0
+sentence-transformers>=2.2.0
+biopython>=1.80
+google-generativeai>=0.5.0
+pyvis>=0.3.0
+networkx>=3.0
+torch>=2.0.0
