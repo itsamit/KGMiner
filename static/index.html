@@ -1,0 +1,2527 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Scientific Knowledge Mining</title>
+  <style>
+    :root {
+      --bg: #f5f5f8;
+      --surface: #ffffff;
+      --surface2: #f0f0f5;
+      --border: #e0e0e8;
+      --border-light: #d0d0dc;
+      --accent: #e94560;
+      --accent-dim: rgba(233, 69, 96, .08);
+      --accent2: #6c63ff;
+      --accent2-dim: rgba(108, 99, 255, .08);
+      --text: #1a1a2e;
+      --text2: #555570;
+      --text3: #8888aa;
+      --green: #00a844;
+      --yellow: #e6a800;
+      --blue: #2979ff;
+      --red: #d50000;
+      --font: 'Segoe UI', system-ui, -apple-system, sans-serif;
+      --mono: 'Cascadia Code', 'JetBrains Mono', Consolas, monospace;
+      --radius: 8px;
+      --radius-lg: 12px;
+    }
+
+    *,
+    *::before,
+    *::after {
+      box-sizing: border-box;
+      margin: 0;
+      padding: 0;
+    }
+
+    html {
+      font-size: 14px;
+    }
+
+    body {
+      font-family: var(--font);
+      background: var(--bg);
+      color: var(--text);
+      min-height: 100vh;
+    }
+
+    a {
+      color: var(--accent);
+      text-decoration: none;
+    }
+
+    button {
+      cursor: pointer;
+      font-family: inherit;
+      border: none;
+    }
+
+    /* Layout */
+    .app {
+      display: flex;
+      height: 100vh;
+    }
+
+    .sidebar {
+      width: 280px;
+      min-width: 280px;
+      background: var(--surface);
+      border-right: 1px solid var(--border);
+      display: flex;
+      flex-direction: column;
+    }
+
+    .main {
+      flex: 1;
+      display: flex;
+      flex-direction: column;
+      overflow: hidden;
+    }
+
+    /* Sidebar */
+    .sidebar-header {
+      padding: 20px 16px 12px;
+      border-bottom: 1px solid var(--border);
+    }
+
+    .logo {
+      font-size: 1.4rem;
+      font-weight: 700;
+      letter-spacing: 2px;
+      color: var(--accent);
+    }
+
+    .logo-sub {
+      font-size: .75rem;
+      color: var(--text3);
+      margin-top: 2px;
+    }
+
+    .new-goal-btn {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      width: calc(100% - 32px);
+      margin: 12px 16px;
+      padding: 10px 14px;
+      background: var(--accent);
+      color: #fff;
+      border-radius: var(--radius);
+      font-size: .85rem;
+      font-weight: 600;
+      transition: opacity .2s;
+    }
+
+    .new-goal-btn:hover {
+      opacity: .85;
+    }
+
+    .goal-list {
+      flex: 1;
+      overflow-y: auto;
+      padding: 8px 0;
+    }
+
+    .goal-item {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      padding: 10px 16px;
+      cursor: pointer;
+      transition: background .15s;
+      border-left: 3px solid transparent;
+    }
+
+    .goal-item:hover {
+      background: var(--surface2);
+    }
+
+    .goal-item.active {
+      background: var(--surface2);
+      border-left-color: var(--accent);
+    }
+
+    .goal-dot {
+      width: 8px;
+      height: 8px;
+      border-radius: 50%;
+      flex-shrink: 0;
+    }
+
+    .goal-dot.pending {
+      background: var(--text3);
+    }
+
+    .goal-dot.searching,
+    .goal-dot.extracting,
+    .goal-dot.normalizing {
+      background: var(--yellow);
+      animation: pulse 1.5s infinite;
+    }
+
+    .goal-dot.complete {
+      background: var(--green);
+    }
+
+    .goal-dot.error {
+      background: var(--red);
+    }
+
+    @keyframes pulse {
+
+      0%,
+      100% {
+        opacity: 1;
+      }
+
+      50% {
+        opacity: .3;
+      }
+    }
+
+    .goal-info {
+      flex: 1;
+      min-width: 0;
+    }
+
+    .goal-name {
+      font-size: .85rem;
+      font-weight: 500;
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
+    }
+
+    .goal-status-text {
+      font-size: .7rem;
+      color: var(--text3);
+      text-transform: capitalize;
+    }
+
+    /* Main content */
+    .empty-state {
+      flex: 1;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      color: var(--text3);
+      gap: 12px;
+    }
+
+    .empty-state svg {
+      opacity: .3;
+    }
+
+    .empty-state p {
+      font-size: .95rem;
+    }
+
+    /* Goal detail view */
+    .goal-view {
+      flex: 1;
+      display: flex;
+      flex-direction: column;
+      overflow: hidden;
+    }
+
+    .goal-header {
+      padding: 20px 28px;
+      border-bottom: 1px solid var(--border);
+      display: flex;
+      align-items: center;
+      gap: 16px;
+    }
+
+    .goal-title {
+      font-size: 1.2rem;
+      font-weight: 600;
+      flex: 1;
+    }
+
+    .goal-actions {
+      display: flex;
+      gap: 8px;
+    }
+
+    .btn {
+      padding: 7px 14px;
+      border-radius: var(--radius);
+      font-size: .8rem;
+      font-weight: 500;
+      transition: all .15s;
+    }
+
+    .btn-outline {
+      background: transparent;
+      border: 1px solid var(--border-light);
+      color: var(--text2);
+    }
+
+    .btn-outline:hover {
+      border-color: var(--text2);
+      color: var(--text);
+    }
+
+    .btn-danger {
+      background: transparent;
+      border: 1px solid rgba(255, 23, 68, .3);
+      color: var(--red);
+    }
+
+    .btn-danger:hover {
+      background: rgba(255, 23, 68, .1);
+    }
+
+    .btn-primary {
+      background: var(--accent);
+      color: #fff;
+    }
+
+    .btn-primary:hover {
+      opacity: .85;
+    }
+
+    .btn-sm {
+      padding: 5px 10px;
+      font-size: .72rem;
+    }
+
+    /* Tabs */
+    .tab-bar {
+      display: flex;
+      gap: 0;
+      border-bottom: 1px solid var(--border);
+      padding: 0 28px;
+    }
+
+    .tab {
+      padding: 10px 18px;
+      font-size: .82rem;
+      color: var(--text3);
+      background: none;
+      border-bottom: 2px solid transparent;
+      transition: all .15s;
+    }
+
+    .tab:hover {
+      color: var(--text2);
+    }
+
+    .tab.active {
+      color: var(--accent);
+      border-bottom-color: var(--accent);
+    }
+
+    /* Tab content */
+    .tab-content {
+      flex: 1;
+      overflow-y: auto;
+      padding: 24px 28px;
+    }
+
+    .tab-content.no-pad {
+      padding: 0;
+      overflow: hidden;
+    }
+
+    .tab-content.query-tab {
+      display: flex;
+      flex-direction: column;
+      overflow: hidden;
+    }
+
+    /* Progress panel */
+    .progress-panel {
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: var(--radius-lg);
+      padding: 24px;
+      margin-bottom: 20px;
+    }
+
+    .progress-bar-wrap {
+      height: 6px;
+      background: var(--border);
+      border-radius: 3px;
+      margin: 14px 0 10px;
+      overflow: hidden;
+    }
+
+    .progress-bar-fill {
+      height: 100%;
+      border-radius: 3px;
+      transition: width .5s ease;
+      background: linear-gradient(90deg, var(--accent), var(--accent2));
+    }
+
+    .progress-pct {
+      font-size: 2rem;
+      font-weight: 700;
+      color: var(--accent);
+    }
+
+    .progress-status {
+      display: inline-block;
+      padding: 3px 10px;
+      border-radius: 20px;
+      font-size: .72rem;
+      font-weight: 600;
+      text-transform: uppercase;
+      letter-spacing: .5px;
+      margin-left: 12px;
+    }
+
+    .progress-status.searching {
+      background: rgba(255, 214, 0, .15);
+      color: var(--yellow);
+    }
+
+    .progress-status.extracting {
+      background: rgba(108, 99, 255, .15);
+      color: var(--accent2);
+    }
+
+    .progress-status.normalizing {
+      background: rgba(68, 138, 255, .15);
+      color: var(--blue);
+    }
+
+    .progress-status.complete {
+      background: rgba(0, 200, 83, .15);
+      color: var(--green);
+    }
+
+    .progress-status.error {
+      background: rgba(255, 23, 68, .15);
+      color: var(--red);
+    }
+
+    .progress-status.pending {
+      background: rgba(85, 85, 112, .15);
+      color: var(--text3);
+    }
+
+    .phase-detail {
+      font-size: .82rem;
+      color: var(--text2);
+      margin-top: 6px;
+    }
+
+    /* Stats row */
+    .stats-row {
+      display: flex;
+      gap: 16px;
+      margin-top: 16px;
+      flex-wrap: wrap;
+    }
+
+    .stat-card {
+      background: var(--surface2);
+      border: 1px solid var(--border);
+      border-radius: var(--radius);
+      padding: 12px 18px;
+      min-width: 120px;
+    }
+
+    .stat-val {
+      font-size: 1.4rem;
+      font-weight: 700;
+    }
+
+    .stat-label {
+      font-size: .7rem;
+      color: var(--text3);
+      text-transform: uppercase;
+      letter-spacing: .5px;
+    }
+
+    /* Pipeline log */
+    .pipeline-log {
+      margin-top: 16px;
+      background: var(--surface2);
+      border: 1px solid var(--border);
+      border-radius: var(--radius);
+      padding: 14px 18px;
+    }
+
+    .pipeline-log h4 {
+      font-size: .78rem;
+      color: var(--text3);
+      margin-bottom: 10px;
+      text-transform: uppercase;
+      letter-spacing: .5px;
+    }
+
+    .log-entries {
+      display: flex;
+      flex-direction: column;
+      gap: 4px;
+    }
+
+    .log-entry {
+      font-size: .8rem;
+      color: var(--text2);
+      font-family: var(--mono);
+    }
+
+    .log-entry .time {
+      color: var(--text3);
+      margin-right: 8px;
+    }
+
+    /* Data table */
+    .data-table-wrap {
+      overflow-x: auto;
+    }
+
+    table {
+      width: 100%;
+      border-collapse: collapse;
+      font-size: .8rem;
+    }
+
+    thead th {
+      position: sticky;
+      top: 0;
+      background: var(--surface);
+      padding: 10px 12px;
+      text-align: left;
+      font-weight: 600;
+      color: var(--text2);
+      border-bottom: 1px solid var(--border);
+      white-space: nowrap;
+      font-size: .72rem;
+      text-transform: uppercase;
+      letter-spacing: .3px;
+    }
+
+    tbody td {
+      padding: 8px 12px;
+      border-bottom: 1px solid var(--border);
+      color: var(--text);
+      white-space: normal;
+      word-wrap: break-word;
+      vertical-align: top;
+    }
+
+    tbody tr:hover td {
+      background: var(--surface2);
+    }
+
+    .pagination {
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      gap: 12px;
+      margin-top: 16px;
+      font-size: .82rem;
+    }
+
+    .pagination button {
+      padding: 6px 12px;
+      background: var(--surface);
+      border: 1px solid var(--border);
+      color: var(--text2);
+      border-radius: var(--radius);
+      font-size: .8rem;
+    }
+
+    .pagination button:hover:not(:disabled) {
+      border-color: var(--text2);
+      color: var(--text);
+    }
+
+    .pagination button:disabled {
+      opacity: .4;
+      cursor: default;
+    }
+
+    .pagination .page-info {
+      color: var(--text3);
+    }
+
+    /* Query — Chat-like UI */
+    .query-section {
+      display: flex;
+      flex-direction: column;
+      height: 100%;
+      max-width: 900px;
+    }
+
+    .chat-history {
+      flex: 1;
+      overflow-y: auto;
+      display: flex;
+      flex-direction: column;
+      gap: 20px;
+      padding-bottom: 16px;
+    }
+
+    .chat-msg {
+      display: flex;
+      flex-direction: column;
+      gap: 6px;
+    }
+
+    .chat-msg.user {
+      align-items: flex-end;
+    }
+
+    .chat-msg.assistant {
+      align-items: flex-start;
+    }
+
+    .chat-bubble {
+      max-width: 85%;
+      padding: 12px 16px;
+      border-radius: var(--radius-lg);
+      font-size: .88rem;
+      line-height: 1.6;
+    }
+
+    .chat-msg.user .chat-bubble {
+      background: var(--accent);
+      color: #fff;
+      border-bottom-right-radius: 4px;
+    }
+
+    .chat-msg.assistant .chat-bubble {
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-bottom-left-radius: 4px;
+      color: var(--text);
+    }
+
+    .chat-time {
+      font-size: .68rem;
+      color: var(--text3);
+      padding: 0 4px;
+    }
+
+    .chat-input-row {
+      display: flex;
+      gap: 10px;
+      padding-top: 12px;
+      border-top: 1px solid var(--border);
+      margin-top: auto;
+    }
+
+    .query-input {
+      flex: 1;
+      padding: 12px 16px;
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: var(--radius);
+      color: var(--text);
+      font-size: .9rem;
+      font-family: inherit;
+      outline: none;
+    }
+
+    .query-input:focus {
+      border-color: var(--accent);
+    }
+
+    .query-input::placeholder {
+      color: var(--text3);
+    }
+
+    .chat-empty {
+      flex: 1;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      color: var(--text3);
+      font-size: .9rem;
+      gap: 16px;
+    }
+
+    .chat-clear-btn {
+      background: none;
+      border: none;
+      color: var(--text3);
+      font-size: .72rem;
+      cursor: pointer;
+      padding: 2px 8px;
+    }
+
+    .chat-clear-btn:hover {
+      color: var(--red);
+    }
+
+    .chat-header {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      padding-bottom: 10px;
+      border-bottom: 1px solid var(--border);
+      margin-bottom: 12px;
+    }
+
+    .chat-header h4 {
+      font-size: .8rem;
+      color: var(--text3);
+      text-transform: uppercase;
+      letter-spacing: .5px;
+    }
+
+    /* Chat list view (shown when no chat is active) */
+    .chat-list-view {
+      flex: 1;
+      overflow-y: auto;
+      display: flex;
+      flex-direction: column;
+      gap: 8px;
+    }
+
+    .chat-list-item {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      padding: 14px 16px;
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: var(--radius);
+      cursor: pointer;
+      transition: all .15s;
+    }
+
+    .chat-list-item:hover {
+      border-color: var(--accent);
+      background: var(--accent-dim);
+    }
+
+    .chat-list-icon {
+      width: 36px;
+      height: 36px;
+      border-radius: 50%;
+      background: var(--accent-dim);
+      color: var(--accent);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: .9rem;
+      flex-shrink: 0;
+    }
+
+    .chat-list-info {
+      flex: 1;
+      min-width: 0;
+    }
+
+    .chat-list-title {
+      font-size: .88rem;
+      font-weight: 500;
+      color: var(--text);
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
+    }
+
+    .chat-list-meta {
+      font-size: .72rem;
+      color: var(--text3);
+      margin-top: 2px;
+    }
+
+    .chat-list-badge {
+      font-size: .68rem;
+      padding: 2px 8px;
+      border-radius: 10px;
+      flex-shrink: 0;
+    }
+
+    .chat-list-badge.full {
+      background: rgba(255, 23, 68, .1);
+      color: var(--red);
+    }
+
+    .chat-list-badge.open {
+      background: rgba(0, 168, 68, .1);
+      color: var(--green);
+    }
+
+    .chat-list-delete {
+      background: none;
+      border: none;
+      color: var(--text3);
+      font-size: 1rem;
+      cursor: pointer;
+      padding: 4px 8px;
+      opacity: 0;
+      transition: opacity .15s;
+    }
+
+    .chat-list-item:hover .chat-list-delete {
+      opacity: 1;
+    }
+
+    .chat-list-delete:hover {
+      color: var(--red);
+    }
+
+    .answer-box {
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: var(--radius-lg);
+      padding: 20px;
+      margin-bottom: 16px;
+    }
+
+    .answer-box h3 {
+      font-size: .85rem;
+      color: var(--accent);
+      margin-bottom: 10px;
+    }
+
+    .answer-text {
+      font-size: .88rem;
+      line-height: 1.7;
+    }
+
+    .answer-text h1 {
+      font-size: 1.3rem;
+      font-weight: 700;
+      color: var(--accent);
+      margin: 16px 0 8px;
+    }
+
+    .answer-text h2 {
+      font-size: 1.1rem;
+      font-weight: 700;
+      color: var(--accent);
+      margin: 14px 0 6px;
+    }
+
+    .answer-text h3 {
+      font-size: .95rem;
+      font-weight: 600;
+      color: var(--text);
+      margin: 12px 0 6px;
+    }
+
+    .answer-text h4 {
+      font-size: .88rem;
+      font-weight: 600;
+      color: var(--text2);
+      margin: 10px 0 4px;
+    }
+
+    .answer-text p {
+      margin: 8px 0;
+    }
+
+    .answer-text strong {
+      color: var(--text);
+      font-weight: 700;
+    }
+
+    .answer-text em {
+      color: var(--text2);
+      font-style: italic;
+    }
+
+    .answer-text ul,
+    .answer-text ol {
+      margin: 8px 0 8px 20px;
+    }
+
+    .answer-text li {
+      margin: 4px 0;
+    }
+
+    .answer-text code {
+      background: var(--surface2);
+      padding: 2px 6px;
+      border-radius: 4px;
+      font-family: var(--mono);
+      font-size: .82rem;
+      color: var(--accent2);
+    }
+
+    .answer-text pre {
+      background: var(--surface2);
+      border: 1px solid var(--border);
+      border-radius: var(--radius);
+      padding: 12px 16px;
+      margin: 10px 0;
+      overflow-x: auto;
+    }
+
+    .answer-text pre code {
+      background: none;
+      padding: 0;
+      color: var(--text);
+    }
+
+    .answer-text blockquote {
+      border-left: 3px solid var(--accent);
+      padding: 8px 14px;
+      margin: 10px 0;
+      background: var(--accent-dim);
+      color: var(--text2);
+      border-radius: 0 var(--radius) var(--radius) 0;
+    }
+
+    .answer-text hr {
+      border: none;
+      border-top: 1px solid var(--border);
+      margin: 14px 0;
+    }
+
+    .answer-text table {
+      width: 100%;
+      border-collapse: collapse;
+      margin: 12px 0;
+      font-size: .82rem;
+    }
+
+    .answer-text thead th {
+      background: var(--surface2);
+      padding: 8px 12px;
+      text-align: left;
+      font-weight: 600;
+      color: var(--text);
+      border: 1px solid var(--border);
+      font-size: .78rem;
+      text-transform: uppercase;
+      letter-spacing: .3px;
+    }
+
+    .answer-text tbody td {
+      padding: 7px 12px;
+      border: 1px solid var(--border);
+      color: var(--text2);
+    }
+
+    .answer-text tbody tr:hover td {
+      background: var(--surface2);
+    }
+
+    .evidence-list {
+      display: flex;
+      flex-direction: column;
+      gap: 6px;
+    }
+
+    .evidence-item {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      background: var(--surface2);
+      border: 1px solid var(--border);
+      border-radius: var(--radius);
+      padding: 8px 14px;
+      font-size: .8rem;
+    }
+
+    .evidence-score {
+      font-family: var(--mono);
+      font-size: .72rem;
+      color: var(--accent2);
+      background: var(--accent2-dim);
+      padding: 2px 8px;
+      border-radius: 4px;
+      white-space: nowrap;
+    }
+
+    .evidence-triple {
+      color: var(--text2);
+      font-family: var(--mono);
+    }
+
+    /* Graph */
+    .graph-container {
+      position: relative;
+      width: 100%;
+      height: 100%;
+      background: var(--bg);
+    }
+
+    .graph-canvas {
+      width: 100%;
+      height: 100%;
+      display: block;
+    }
+
+    .graph-toolbar {
+      position: absolute;
+      top: 12px;
+      left: 12px;
+      display: flex;
+      gap: 6px;
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: var(--radius);
+      padding: 6px 10px;
+      z-index: 10;
+    }
+
+    .graph-toolbar button {
+      padding: 4px 10px;
+      background: var(--surface2);
+      border: 1px solid var(--border);
+      color: var(--text2);
+      border-radius: 4px;
+      font-size: .72rem;
+    }
+
+    .graph-toolbar button:hover {
+      color: var(--text);
+      border-color: var(--text2);
+    }
+
+    .graph-stats-overlay {
+      position: absolute;
+      bottom: 12px;
+      left: 12px;
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: var(--radius);
+      padding: 10px 14px;
+      z-index: 10;
+      font-size: .75rem;
+      color: var(--text2);
+    }
+
+    .graph-stats-overlay .gs-row {
+      margin-bottom: 3px;
+    }
+
+    .graph-stats-overlay .gs-val {
+      color: var(--text);
+      font-weight: 600;
+    }
+
+    .graph-legend {
+      position: absolute;
+      top: 12px;
+      right: 12px;
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: var(--radius);
+      padding: 10px 14px;
+      z-index: 10;
+      font-size: .72rem;
+      max-height: 300px;
+      overflow-y: auto;
+      min-width: 160px;
+    }
+
+    .graph-legend h5 {
+      color: var(--text3);
+      margin-bottom: 6px;
+      text-transform: uppercase;
+      letter-spacing: .5px;
+    }
+
+    .legend-item {
+      display: flex;
+      align-items: center;
+      gap: 6px;
+      margin-bottom: 3px;
+      color: var(--text2);
+    }
+
+    .legend-dot {
+      width: 8px;
+      height: 8px;
+      border-radius: 50%;
+      flex-shrink: 0;
+    }
+
+    .graph-tooltip {
+      position: absolute;
+      display: none;
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: var(--radius);
+      padding: 10px 14px;
+      z-index: 20;
+      font-size: .78rem;
+      max-width: 320px;
+      pointer-events: none;
+      box-shadow: 0 4px 20px rgba(0, 0, 0, .12);
+    }
+
+    .graph-tooltip .tt-name {
+      font-weight: 600;
+      color: var(--accent);
+      margin-bottom: 4px;
+    }
+
+    .graph-tooltip .tt-info {
+      color: var(--text2);
+    }
+
+    .graph-search-box {
+      position: absolute;
+      top: 12px;
+      left: 50%;
+      transform: translateX(-50%);
+      z-index: 10;
+    }
+
+    .graph-search-box input {
+      padding: 6px 14px;
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: var(--radius);
+      color: var(--text);
+      font-size: .8rem;
+      font-family: inherit;
+      outline: none;
+      width: 260px;
+    }
+
+    .graph-search-box input:focus {
+      border-color: var(--accent);
+    }
+
+    .graph-search-box input::placeholder {
+      color: var(--text3);
+    }
+
+    /* Modal */
+    .modal-overlay {
+      position: fixed;
+      inset: 0;
+      background: rgba(0, 0, 0, .6);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      z-index: 1000;
+    }
+
+    .modal {
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: var(--radius-lg);
+      padding: 28px;
+      width: 440px;
+      max-width: 90vw;
+    }
+
+    .modal h2 {
+      font-size: 1.1rem;
+      margin-bottom: 16px;
+    }
+
+    .modal input {
+      width: 100%;
+      padding: 12px 16px;
+      background: var(--bg);
+      border: 1px solid var(--border);
+      border-radius: var(--radius);
+      color: var(--text);
+      font-size: .9rem;
+      font-family: inherit;
+      outline: none;
+      margin-bottom: 16px;
+    }
+
+    .modal input:focus {
+      border-color: var(--accent);
+    }
+
+    .modal-actions {
+      display: flex;
+      gap: 10px;
+      justify-content: flex-end;
+    }
+
+    /* Error banner */
+    .error-banner {
+      background: rgba(255, 23, 68, .1);
+      border: 1px solid rgba(255, 23, 68, .3);
+      border-radius: var(--radius);
+      padding: 12px 16px;
+      color: var(--red);
+      font-size: .85rem;
+      margin-bottom: 16px;
+    }
+
+    /* Scrollbar */
+    ::-webkit-scrollbar {
+      width: 6px;
+      height: 6px;
+    }
+
+    ::-webkit-scrollbar-track {
+      background: transparent;
+    }
+
+    ::-webkit-scrollbar-thumb {
+      background: var(--border-light);
+      border-radius: 3px;
+    }
+
+    /* Cell expand */
+    .cell-expanded {
+      white-space: normal !important;
+      max-width: none !important;
+    }
+  </style>
+</head>
+
+<body>
+  <div class="app">
+    <!-- Sidebar -->
+    <div class="sidebar">
+      <div class="sidebar-header">
+        <div class="logo">Knowledge</div>
+        <div class="logo-sub">Scientific Knowledge Mining</div>
+      </div>
+      <button class="new-goal-btn" onclick="showNewGoalModal()">
+        <svg width="14" height="14" fill="none" stroke="currentColor" stroke-width="2.5">
+          <line x1="7" y1="1" x2="7" y2="13" />
+          <line x1="1" y1="7" x2="13" y2="7" />
+        </svg>
+        New Research Goal
+      </button>
+      <div class="goal-list" id="goalList"></div>
+    </div>
+
+    <!-- Main -->
+    <div class="main" id="mainContent">
+      <div class="empty-state" id="emptyState">
+        <svg width="64" height="64" fill="none" stroke="currentColor" stroke-width="1.5" viewBox="0 0 24 24">
+          <path
+            d="M12 6.042A8.967 8.967 0 0 0 6 3.75c-1.052 0-2.062.18-3 .512v14.25A8.987 8.987 0 0 1 6 18c2.305 0 4.408.867 6 2.292m0-14.25a8.966 8.966 0 0 1 6-2.292c1.052 0 2.062.18 3 .512v14.25A8.987 8.987 0 0 0 18 18a8.967 8.967 0 0 0-6 2.292m0-14.25v14.25" />
+        </svg>
+        <p>Create a research goal to start mining knowledge</p>
+      </div>
+
+      <div class="goal-view" id="goalView" style="display:none;">
+        <div class="goal-header">
+          <div class="goal-title" id="viewTitle"></div>
+          <div class="goal-actions">
+            <button class="btn btn-outline" id="downloadBtn" onclick="downloadGoal()">Download Excel</button>
+            <button class="btn btn-danger" onclick="deleteGoal()">Delete</button>
+          </div>
+        </div>
+        <div class="tab-bar">
+          <button class="tab active" data-tab="progress" onclick="switchTab(this)">Progress</button>
+          <button class="tab" data-tab="data" onclick="switchTab(this)">Data</button>
+          <button class="tab" data-tab="graph" onclick="switchTab(this)">Graph</button>
+          <button class="tab" data-tab="query" onclick="switchTab(this)">Query</button>
+        </div>
+        <div class="tab-content" id="tabContent"></div>
+      </div>
+    </div>
+  </div>
+
+  <!-- New Goal Modal -->
+  <div class="modal-overlay" id="newGoalModal" style="display:none;" onclick="if(event.target===this)closeModal()">
+    <div class="modal">
+      <h2>New Research Goal</h2>
+      <input type="text" id="goalInput" placeholder="e.g. Study on improving β-carotene production in microorganisms"
+        onkeydown="if(event.key==='Enter')createGoal()">
+      <div class="modal-actions">
+        <button class="btn btn-outline" onclick="closeModal()">Cancel</button>
+        <button class="btn btn-primary" onclick="createGoal()">Create</button>
+      </div>
+    </div>
+  </div>
+
+  <script>
+    /* ==========================================================================
+       State
+       ========================================================================== */
+    const API = '';
+    let goals = [];
+    let activeGoalId = null;
+    let pollTimer = null;
+    let currentTab = 'progress';
+    let dataPage = 1;
+    const PAGE_SIZE = 50;
+
+    // Graph state
+    let graphData = null;     // cached {nodes, edges, stats}
+    let graphGoalId = null;   // which goal this graph is for
+    let graphSim = null;      // force simulation instance
+
+    /* ==========================================================================
+       API helpers
+       ========================================================================== */
+    async function api(path, opts = {}) {
+      const res = await fetch(API + path, {
+        headers: { 'Content-Type': 'application/json' },
+        ...opts,
+      });
+      if (!res.ok) {
+        const err = await res.json().catch(() => ({ detail: res.statusText }));
+        throw new Error(err.detail || 'Request failed');
+      }
+      if (res.status === 204) return null;
+      return res.json();
+    }
+
+    /* ==========================================================================
+       Goal list
+       ========================================================================== */
+    async function loadGoals() {
+      try {
+        goals = await api('/api/goals');
+        renderGoalList();
+      } catch (e) {
+        console.error('Failed to load goals:', e);
+      }
+    }
+
+    function renderGoalList() {
+      const el = document.getElementById('goalList');
+      if (!goals.length) {
+        el.innerHTML = '<div style="padding:20px 16px;color:var(--text3);font-size:.8rem;">No goals yet</div>';
+        return;
+      }
+      el.innerHTML = goals.map(g => `
+    <div class="goal-item ${g.id === activeGoalId ? 'active' : ''}"
+         onclick="selectGoal('${g.id}')">
+      <div class="goal-dot ${g.status}"></div>
+      <div class="goal-info">
+        <div class="goal-name" title="${esc(g.name)}">${esc(g.name)}</div>
+        <div class="goal-status-text">${g.status}${g.progress != null ? ' · ' + g.progress + '%' : ''}</div>
+      </div>
+    </div>
+  `).join('');
+    }
+
+    /* ==========================================================================
+       Goal selection & polling
+       ========================================================================== */
+    function selectGoal(id) {
+      activeGoalId = id;
+      currentTab = 'progress';
+      dataPage = 1;
+      renderGoalList();
+      loadGoalDetail();
+      startPolling();
+    }
+
+    async function loadGoalDetail() {
+      if (!activeGoalId) return;
+      try {
+        const g = await api(`/api/goals/${activeGoalId}`);
+        const idx = goals.findIndex(x => x.id === g.id);
+        if (idx >= 0) goals[idx] = g;
+        renderGoalList();
+        renderGoalView(g);
+      } catch (e) {
+        console.error('Failed to load goal:', e);
+      }
+    }
+
+    function startPolling() {
+      stopPolling();
+      pollTimer = setInterval(async () => {
+        if (!activeGoalId) return stopPolling();
+        try {
+          const g = await api(`/api/goals/${activeGoalId}`);
+          const idx = goals.findIndex(x => x.id === g.id);
+          if (idx >= 0) goals[idx] = g;
+          renderGoalList();
+          // Only re-render if not on graph tab (graph has its own state)
+          if (g.id === activeGoalId && currentTab !== 'graph') renderGoalView(g);
+          if (g.status === 'complete' || g.status === 'error') stopPolling();
+        } catch (e) {
+          console.error('Poll error:', e);
+        }
+      }, 2000);
+    }
+
+    function stopPolling() {
+      if (pollTimer) { clearInterval(pollTimer); pollTimer = null; }
+    }
+
+    /* ==========================================================================
+       Goal view renderer
+       ========================================================================== */
+    function renderGoalView(g) {
+      document.getElementById('emptyState').style.display = 'none';
+      document.getElementById('goalView').style.display = 'flex';
+      document.getElementById('viewTitle').textContent = g.name;
+      document.getElementById('downloadBtn').style.display =
+        g.status === 'complete' && g.stats && g.stats.articles > 0 ? '' : 'none';
+
+      document.querySelectorAll('.tab').forEach(t => {
+        t.classList.toggle('active', t.dataset.tab === currentTab);
+      });
+
+      const content = document.getElementById('tabContent');
+
+      // Graph tab needs no-pad, query tab needs flex for chat layout
+      if (currentTab === 'graph') {
+        content.className = 'tab-content no-pad';
+      } else if (currentTab === 'query') {
+        content.className = 'tab-content query-tab';
+      } else {
+        content.className = 'tab-content';
+      }
+
+      if (currentTab === 'progress') renderProgressTab(content, g);
+      else if (currentTab === 'data') renderDataTab(content, g);
+      else if (currentTab === 'graph') renderGraphTab(content, g);
+      else if (currentTab === 'query') renderQueryTab(content, g);
+    }
+
+    /* ==========================================================================
+       Progress Tab
+       ========================================================================== */
+    function renderProgressTab(el, g) {
+      const s = g.stats || { articles: 0, triples: 0, entities: 0 };
+
+      let logHtml = '';
+      const logs = [];
+      if (g.search_queries && g.search_queries.length) {
+        logs.push({ label: 'Search queries generated', val: g.search_queries.length });
+        g.search_queries.forEach((q, i) => {
+          logs.push({ label: `  Query ${i + 1}`, val: q });
+        });
+      }
+      if (g.pubmed_ids_count != null) logs.push({ label: 'Unique PubMed IDs', val: g.pubmed_ids_count });
+      if (g.articles_fetched != null) logs.push({ label: 'Articles fetched', val: g.articles_fetched });
+      if (g.articles_after_filter != null) logs.push({ label: 'After relevance filter', val: g.articles_after_filter });
+      if (g.total_count != null && g.processed_count != null) {
+        logs.push({ label: 'Extraction progress', val: `${g.processed_count} / ${g.total_count}` });
+      }
+      if (s.articles) logs.push({ label: 'Final articles', val: s.articles });
+      if (s.triples) logs.push({ label: 'Unique triples', val: s.triples });
+      if (s.entities) logs.push({ label: 'Unique entities', val: s.entities });
+
+      if (logs.length) {
+        logHtml = `
+      <div class="pipeline-log">
+        <h4>Pipeline Details</h4>
+        <div class="log-entries">
+          ${logs.map(l => `<div class="log-entry"><span class="time">&rarr;</span>${esc(String(l.label))}: <strong>${esc(String(l.val))}</strong></div>`).join('')}
+        </div>
+      </div>`;
+      }
+
+      el.innerHTML = `
+    <div class="progress-panel">
+      <span class="progress-pct">${g.progress || 0}%</span>
+      <span class="progress-status ${g.status}">${g.status}</span>
+      <div class="progress-bar-wrap">
+        <div class="progress-bar-fill" style="width:${g.progress || 0}%"></div>
+      </div>
+      ${g.phase_detail ? `<div class="phase-detail">${esc(g.phase_detail)}</div>` : ''}
+      ${g.error_message ? `<div class="error-banner" style="margin-top:12px">${esc(g.error_message)}</div>` : ''}
+      <div class="stats-row">
+        <div class="stat-card"><div class="stat-val">${s.articles}</div><div class="stat-label">Articles</div></div>
+        <div class="stat-card"><div class="stat-val">${s.triples}</div><div class="stat-label">Triples</div></div>
+        <div class="stat-card"><div class="stat-val">${s.entities}</div><div class="stat-label">Entities</div></div>
+        ${g.pubmed_ids_count != null ? `<div class="stat-card"><div class="stat-val">${g.pubmed_ids_count}</div><div class="stat-label">PubMed IDs</div></div>` : ''}
+      </div>
+    </div>
+    ${logHtml}
+  `;
+    }
+
+    /* ==========================================================================
+       Data Tab
+       ========================================================================== */
+    async function renderDataTab(el, g) {
+      if (g.status !== 'complete') {
+        el.innerHTML = '<div style="color:var(--text3);padding:40px 0;text-align:center;">Data will be available once the pipeline completes.</div>';
+        return;
+      }
+      el.innerHTML = '<div style="color:var(--text3);padding:40px 0;text-align:center;">Loading data...</div>';
+      try {
+        const resp = await api(`/api/goals/${activeGoalId}/data?page=${dataPage}&page_size=${PAGE_SIZE}`);
+        if (!resp.data || !resp.data.length) {
+          el.innerHTML = '<div style="color:var(--text3);padding:40px 0;text-align:center;">No data rows found.</div>';
+          return;
+        }
+        const cols = Object.keys(resp.data[0]);
+        const displayCols = cols.filter(c => c !== 'Abstract');
+        el.innerHTML = `
+      <div class="data-table-wrap">
+        <table>
+          <thead><tr>${displayCols.map(c => `<th>${esc(c)}</th>`).join('')}</tr></thead>
+          <tbody>
+            ${resp.data.map(row => `<tr>${displayCols.map(c => {
+          const val = row[c] != null ? String(row[c]) : '';
+          return `<td title="${esc(val)}" onclick="this.classList.toggle('cell-expanded')">${esc(val)}</td>`;
+        }).join('')}</tr>`).join('')}
+          </tbody>
+        </table>
+      </div>
+      <div class="pagination">
+        <button onclick="changePage(-1)" ${dataPage <= 1 ? 'disabled' : ''}>&#8592; Prev</button>
+        <span class="page-info">Page ${resp.page} of ${resp.total_pages} (${resp.total} rows)</span>
+        <button onclick="changePage(1)" ${dataPage >= resp.total_pages ? 'disabled' : ''}>Next &#8594;</button>
+      </div>
+    `;
+      } catch (e) {
+        el.innerHTML = `<div class="error-banner">${esc(e.message)}</div>`;
+      }
+    }
+
+    function changePage(delta) {
+      dataPage = Math.max(1, dataPage + delta);
+      const g = goals.find(x => x.id === activeGoalId);
+      if (g) renderDataTab(document.getElementById('tabContent'), g);
+    }
+
+    /* ==========================================================================
+       Graph Tab — Force-directed canvas visualization
+       ========================================================================== */
+    async function renderGraphTab(el, g) {
+      if (g.status !== 'complete') {
+        el.innerHTML = '<div style="color:var(--text3);padding:40px 0;text-align:center;">Graph will be available once the pipeline completes.</div>';
+        return;
+      }
+
+      // Show loading
+      el.innerHTML = '<div style="color:var(--text3);padding:40px 0;text-align:center;">Loading knowledge graph...</div>';
+
+      // Load graph data (use cache if same goal)
+      if (graphGoalId !== activeGoalId || !graphData) {
+        try {
+          graphData = await api(`/api/goals/${activeGoalId}/graph?limit=500`);
+          graphGoalId = activeGoalId;
+        } catch (e) {
+          el.innerHTML = `<div style="padding:28px;"><div class="error-banner">${esc(e.message)}</div></div>`;
+          return;
+        }
+      }
+
+      if (!graphData.nodes.length) {
+        el.innerHTML = '<div style="color:var(--text3);padding:40px 0;text-align:center;">No graph data available.</div>';
+        return;
+      }
+
+      // Build graph UI
+      el.innerHTML = `
+    <div class="graph-container" id="graphContainer">
+      <canvas class="graph-canvas" id="graphCanvas"></canvas>
+      <div class="graph-toolbar">
+        <button onclick="graphZoom(1.3)">Zoom +</button>
+        <button onclick="graphZoom(0.7)">Zoom -</button>
+        <button onclick="graphReset()">Reset</button>
+        <button onclick="graphToggleLabels()">Labels</button>
+      </div>
+      <div class="graph-search-box">
+        <input id="graphSearch" placeholder="Search nodes..." oninput="graphHighlightSearch(this.value)">
+      </div>
+      <div class="graph-stats-overlay" id="graphStatsOverlay"></div>
+      <div class="graph-legend" id="graphLegend"></div>
+      <div class="graph-tooltip" id="graphTooltip"></div>
+    </div>
+  `;
+
+      initGraph();
+    }
+
+    /* ---------- Graph engine ---------- */
+    const GRAPH = {
+      nodes: [],        // {id, label, x, y, vx, vy, count, color, radius, pinned}
+      edges: [],        // {source (index), target (index), label, color}
+      nodeMap: {},      // id -> index
+      transform: { x: 0, y: 0, scale: 1 },
+      showLabels: true,
+      highlightNode: null,
+      highlightNeighbors: new Set(),
+      searchTerm: '',
+      dragging: null,
+      panning: false,
+      panStart: { x: 0, y: 0 },
+      canvas: null,
+      ctx: null,
+      animFrame: null,
+      simRunning: true,
+      simAlpha: 1,
+    };
+
+    // Color palette for relation types
+    const REL_COLORS = {
+      activates: '#00c853', inhibits: '#ff1744', produces: '#ffd600',
+      increases: '#69f0ae', decreases: '#ff6e40', has_metric: '#448aff',
+      is_a: '#ab47bc', is_variant_of: '#26c6da', encodes: '#ec407a',
+      is_host_for: '#ffa726', integrated_in: '#8d6e63', has_capability: '#78909c',
+    };
+    function relColor(r) {
+      const rl = r.toLowerCase().trim();
+      return REL_COLORS[rl] || '#555570';
+    }
+
+    // Node colors by connectivity (heatmap — light theme)
+    function nodeColor(count, maxCount) {
+      const t = Math.min(count / Math.max(maxCount * 0.3, 1), 1);
+      const r = Math.round(100 + t * (210 - 100));
+      const g = Math.round(100 + t * (50 - 100));
+      const b = Math.round(220 + t * (80 - 220));
+      return `rgb(${r},${g},${b})`;
+    }
+
+    function initGraph() {
+      const container = document.getElementById('graphContainer');
+      const canvas = document.getElementById('graphCanvas');
+      if (!canvas || !container) return;
+
+      const rect = container.getBoundingClientRect();
+      canvas.width = rect.width;
+      canvas.height = rect.height;
+
+      GRAPH.canvas = canvas;
+      GRAPH.ctx = canvas.getContext('2d');
+      GRAPH.nodes = [];
+      GRAPH.edges = [];
+      GRAPH.nodeMap = {};
+      GRAPH.transform = { x: canvas.width / 2, y: canvas.height / 2, scale: 1 };
+      GRAPH.highlightNode = null;
+      GRAPH.highlightNeighbors = new Set();
+      GRAPH.simAlpha = 1;
+      GRAPH.simRunning = true;
+
+      const data = graphData;
+      const maxCount = Math.max(...data.nodes.map(n => n.count), 1);
+
+      // Create nodes with random initial positions
+      data.nodes.forEach((n, i) => {
+        const angle = (i / data.nodes.length) * Math.PI * 2;
+        const radius = 150 + Math.random() * 200;
+        GRAPH.nodes.push({
+          id: n.id, label: n.label, count: n.count,
+          x: Math.cos(angle) * radius + (Math.random() - 0.5) * 50,
+          y: Math.sin(angle) * radius + (Math.random() - 0.5) * 50,
+          vx: 0, vy: 0,
+          color: nodeColor(n.count, maxCount),
+          radius: Math.max(3, Math.min(12, 3 + Math.sqrt(n.count) * 1.5)),
+          pinned: false,
+        });
+        GRAPH.nodeMap[n.id] = i;
+      });
+
+      // Create edges
+      data.edges.forEach(e => {
+        const si = GRAPH.nodeMap[e.from];
+        const ti = GRAPH.nodeMap[e.to];
+        if (si !== undefined && ti !== undefined) {
+          GRAPH.edges.push({
+            source: si, target: ti, label: e.label,
+            color: relColor(e.label),
+          });
+        }
+      });
+
+      // Build neighbor lookup
+      GRAPH.neighbors = {};
+      GRAPH.edges.forEach(e => {
+        if (!GRAPH.neighbors[e.source]) GRAPH.neighbors[e.source] = new Set();
+        if (!GRAPH.neighbors[e.target]) GRAPH.neighbors[e.target] = new Set();
+        GRAPH.neighbors[e.source].add(e.target);
+        GRAPH.neighbors[e.target].add(e.source);
+      });
+
+      // Stats overlay
+      const statsEl = document.getElementById('graphStatsOverlay');
+      const st = data.stats;
+      statsEl.innerHTML = `
+    <div class="gs-row">Nodes: <span class="gs-val">${st.displayed_nodes}</span> / ${st.total_nodes}</div>
+    <div class="gs-row">Edges: <span class="gs-val">${st.displayed_edges}</span> / ${st.total_edges}</div>
+  `;
+
+      // Legend — top relations
+      const legendEl = document.getElementById('graphLegend');
+      const relDist = st.relation_distribution || {};
+      const relEntries = Object.entries(relDist).slice(0, 12);
+      legendEl.innerHTML = `
+    <h5>Relations</h5>
+    ${relEntries.map(([r, c]) => `
+      <div class="legend-item">
+        <div class="legend-dot" style="background:${relColor(r)}"></div>
+        ${esc(r)} (${c})
+      </div>
+    `).join('')}
+  `;
+
+      // Mouse events
+      canvas.addEventListener('mousedown', graphMouseDown);
+      canvas.addEventListener('mousemove', graphMouseMove);
+      canvas.addEventListener('mouseup', graphMouseUp);
+      canvas.addEventListener('wheel', graphWheel, { passive: false });
+      canvas.addEventListener('dblclick', graphDblClick);
+
+      // Resize
+      window.addEventListener('resize', () => {
+        const r2 = container.getBoundingClientRect();
+        canvas.width = r2.width;
+        canvas.height = r2.height;
+      });
+
+      // Start simulation
+      if (GRAPH.animFrame) cancelAnimationFrame(GRAPH.animFrame);
+      graphTick();
+    }
+
+    /* ---------- Force simulation ---------- */
+    function graphTick() {
+      if (GRAPH.simRunning && GRAPH.simAlpha > 0.001) {
+        simulateForces();
+        GRAPH.simAlpha *= 0.995;
+      }
+      drawGraph();
+      GRAPH.animFrame = requestAnimationFrame(graphTick);
+    }
+
+    function simulateForces() {
+      const nodes = GRAPH.nodes;
+      const edges = GRAPH.edges;
+      const alpha = GRAPH.simAlpha;
+      const N = nodes.length;
+
+      // Repulsion (Barnes-Hut approximation: just use sampling for large graphs)
+      const repStrength = -120;
+      const step = N > 300 ? 3 : 1; // sample for performance
+      for (let i = 0; i < N; i++) {
+        if (nodes[i].pinned) continue;
+        for (let j = i + step; j < N; j += step) {
+          let dx = nodes[i].x - nodes[j].x;
+          let dy = nodes[i].y - nodes[j].y;
+          let d2 = dx * dx + dy * dy;
+          if (d2 < 1) d2 = 1;
+          if (d2 > 250000) continue; // skip far nodes
+          const f = repStrength * alpha / d2;
+          const fx = dx * f;
+          const fy = dy * f;
+          nodes[i].vx -= fx;
+          nodes[i].vy -= fy;
+          if (!nodes[j].pinned) {
+            nodes[j].vx += fx;
+            nodes[j].vy += fy;
+          }
+        }
+      }
+
+      // Attraction (springs)
+      const springLen = 80;
+      const springK = 0.02;
+      for (const e of edges) {
+        const s = nodes[e.source];
+        const t = nodes[e.target];
+        let dx = t.x - s.x;
+        let dy = t.y - s.y;
+        let d = Math.sqrt(dx * dx + dy * dy) || 1;
+        const f = (d - springLen) * springK * alpha;
+        const fx = (dx / d) * f;
+        const fy = (dy / d) * f;
+        if (!s.pinned) { s.vx += fx; s.vy += fy; }
+        if (!t.pinned) { t.vx -= fx; t.vy -= fy; }
+      }
+
+      // Center gravity
+      for (const n of nodes) {
+        if (n.pinned) continue;
+        n.vx -= n.x * 0.001 * alpha;
+        n.vy -= n.y * 0.001 * alpha;
+      }
+
+      // Apply velocity with damping
+      for (const n of nodes) {
+        if (n.pinned) continue;
+        n.vx *= 0.85;
+        n.vy *= 0.85;
+        n.x += n.vx;
+        n.y += n.vy;
+      }
+    }
+
+    /* ---------- Rendering ---------- */
+    function drawGraph() {
+      const { ctx, canvas, nodes, edges, transform, showLabels, highlightNode, highlightNeighbors, searchTerm } = GRAPH;
+      if (!ctx) return;
+
+      ctx.clearRect(0, 0, canvas.width, canvas.height);
+      ctx.save();
+      ctx.translate(transform.x, transform.y);
+      ctx.scale(transform.scale, transform.scale);
+
+      const isHighlighting = highlightNode !== null;
+      const isSearching = searchTerm.length > 0;
+      const searchLower = searchTerm.toLowerCase();
+
+      // Draw edges
+      for (const e of edges) {
+        const s = nodes[e.source];
+        const t = nodes[e.target];
+
+        let alpha = 0.35;
+        if (isHighlighting) {
+          alpha = (e.source === highlightNode || e.target === highlightNode) ? 0.9 : 0.06;
+        } else if (isSearching) {
+          const sMatch = s.label.toLowerCase().includes(searchLower);
+          const tMatch = t.label.toLowerCase().includes(searchLower);
+          alpha = (sMatch || tMatch) ? 0.8 : 0.06;
+        }
+
+        ctx.beginPath();
+        ctx.moveTo(s.x, s.y);
+        ctx.lineTo(t.x, t.y);
+        ctx.strokeStyle = e.color;
+        ctx.globalAlpha = alpha;
+        ctx.lineWidth = 0.8 / transform.scale;
+        ctx.stroke();
+
+        // Arrow
+        if (alpha > 0.1) {
+          const dx = t.x - s.x;
+          const dy = t.y - s.y;
+          const d = Math.sqrt(dx * dx + dy * dy) || 1;
+          const ax = t.x - (dx / d) * (t.radius + 3);
+          const ay = t.y - (dy / d) * (t.radius + 3);
+          const arrowSize = 4 / transform.scale;
+          const angle = Math.atan2(dy, dx);
+          ctx.beginPath();
+          ctx.moveTo(ax, ay);
+          ctx.lineTo(ax - arrowSize * Math.cos(angle - 0.4), ay - arrowSize * Math.sin(angle - 0.4));
+          ctx.lineTo(ax - arrowSize * Math.cos(angle + 0.4), ay - arrowSize * Math.sin(angle + 0.4));
+          ctx.closePath();
+          ctx.fillStyle = e.color;
+          ctx.fill();
+        }
+
+        // Edge label (only when zoomed in)
+        if (showLabels && transform.scale > 1.5 && alpha > 0.2) {
+          const mx = (s.x + t.x) / 2;
+          const my = (s.y + t.y) / 2;
+          ctx.font = `${9 / transform.scale}px sans-serif`;
+          ctx.fillStyle = '#888';
+          ctx.globalAlpha = alpha * 0.8;
+          ctx.textAlign = 'center';
+          ctx.fillText(e.label, mx, my - 3 / transform.scale);
+        }
+      }
+
+      // Draw nodes
+      for (let i = 0; i < nodes.length; i++) {
+        const n = nodes[i];
+        let alpha = 1;
+        let strokeColor = null;
+
+        if (isHighlighting) {
+          if (i === highlightNode) {
+            strokeColor = '#e94560';
+            alpha = 1;
+          } else if (highlightNeighbors.has(i)) {
+            alpha = 0.9;
+          } else {
+            alpha = 0.08;
+          }
+        } else if (isSearching) {
+          const match = n.label.toLowerCase().includes(searchLower);
+          alpha = match ? 1 : 0.08;
+          if (match) strokeColor = '#e94560';
+        }
+
+        ctx.globalAlpha = alpha;
+        ctx.beginPath();
+        ctx.arc(n.x, n.y, n.radius, 0, Math.PI * 2);
+        ctx.fillStyle = n.color;
+        ctx.fill();
+
+        if (strokeColor) {
+          ctx.strokeStyle = strokeColor;
+          ctx.lineWidth = 2 / transform.scale;
+          ctx.stroke();
+        }
+
+        // Label
+        if (showLabels && (transform.scale > 0.6 || n.radius > 6) && alpha > 0.1) {
+          const fontSize = Math.max(8, Math.min(12, n.radius * 1.2)) / transform.scale;
+          ctx.font = `${fontSize}px sans-serif`;
+          ctx.fillStyle = '#333';
+          ctx.globalAlpha = alpha * 0.9;
+          ctx.textAlign = 'center';
+          ctx.textBaseline = 'top';
+          ctx.fillText(n.label.length > 25 ? n.label.slice(0, 23) + '...' : n.label, n.x, n.y + n.radius + 2);
+        }
+      }
+
+      ctx.restore();
+      ctx.globalAlpha = 1;
+    }
+
+    /* ---------- Interaction ---------- */
+    function screenToGraph(sx, sy) {
+      return {
+        x: (sx - GRAPH.transform.x) / GRAPH.transform.scale,
+        y: (sy - GRAPH.transform.y) / GRAPH.transform.scale,
+      };
+    }
+
+    function findNodeAt(gx, gy) {
+      for (let i = GRAPH.nodes.length - 1; i >= 0; i--) {
+        const n = GRAPH.nodes[i];
+        const dx = gx - n.x, dy = gy - n.y;
+        if (dx * dx + dy * dy <= (n.radius + 4) * (n.radius + 4)) return i;
+      }
+      return -1;
+    }
+
+    function graphMouseDown(e) {
+      const rect = GRAPH.canvas.getBoundingClientRect();
+      const sx = e.clientX - rect.left, sy = e.clientY - rect.top;
+      const gp = screenToGraph(sx, sy);
+      const ni = findNodeAt(gp.x, gp.y);
+
+      if (ni >= 0) {
+        GRAPH.dragging = ni;
+        GRAPH.nodes[ni].pinned = true;
+        // Highlight
+        GRAPH.highlightNode = ni;
+        GRAPH.highlightNeighbors = new Set(GRAPH.neighbors[ni] || []);
+        showTooltipForNode(ni, e.clientX, e.clientY);
+      } else {
+        GRAPH.panning = true;
+        GRAPH.panStart = { x: e.clientX - GRAPH.transform.x, y: e.clientY - GRAPH.transform.y };
+        GRAPH.highlightNode = null;
+        GRAPH.highlightNeighbors = new Set();
+        hideTooltip();
+      }
+    }
+
+    function graphMouseMove(e) {
+      const rect = GRAPH.canvas.getBoundingClientRect();
+      if (GRAPH.dragging !== null) {
+        const gp = screenToGraph(e.clientX - rect.left, e.clientY - rect.top);
+        GRAPH.nodes[GRAPH.dragging].x = gp.x;
+        GRAPH.nodes[GRAPH.dragging].y = gp.y;
+        GRAPH.simAlpha = Math.max(GRAPH.simAlpha, 0.05);
+        GRAPH.simRunning = true;
+        showTooltipForNode(GRAPH.dragging, e.clientX, e.clientY);
+      } else if (GRAPH.panning) {
+        GRAPH.transform.x = e.clientX - GRAPH.panStart.x;
+        GRAPH.transform.y = e.clientY - GRAPH.panStart.y;
+      } else {
+        // Hover tooltip
+        const gp = screenToGraph(e.clientX - rect.left, e.clientY - rect.top);
+        const ni = findNodeAt(gp.x, gp.y);
+        if (ni >= 0) {
+          GRAPH.canvas.style.cursor = 'pointer';
+          GRAPH.highlightNode = ni;
+          GRAPH.highlightNeighbors = new Set(GRAPH.neighbors[ni] || []);
+          showTooltipForNode(ni, e.clientX, e.clientY);
+        } else {
+          GRAPH.canvas.style.cursor = 'grab';
+          if (GRAPH.dragging === null) {
+            GRAPH.highlightNode = null;
+            GRAPH.highlightNeighbors = new Set();
+            hideTooltip();
+          }
+        }
+      }
+    }
+
+    function graphMouseUp(e) {
+      if (GRAPH.dragging !== null) {
+        GRAPH.nodes[GRAPH.dragging].pinned = false;
+        GRAPH.dragging = null;
+      }
+      GRAPH.panning = false;
+    }
+
+    function graphWheel(e) {
+      e.preventDefault();
+      const rect = GRAPH.canvas.getBoundingClientRect();
+      const mx = e.clientX - rect.left;
+      const my = e.clientY - rect.top;
+      const delta = e.deltaY > 0 ? 0.9 : 1.1;
+      const newScale = GRAPH.transform.scale * delta;
+      if (newScale < 0.05 || newScale > 20) return;
+
+      // Zoom toward cursor
+      GRAPH.transform.x = mx - (mx - GRAPH.transform.x) * delta;
+      GRAPH.transform.y = my - (my - GRAPH.transform.y) * delta;
+      GRAPH.transform.scale = newScale;
+    }
+
+    function graphDblClick(e) {
+      const rect = GRAPH.canvas.getBoundingClientRect();
+      const gp = screenToGraph(e.clientX - rect.left, e.clientY - rect.top);
+      const ni = findNodeAt(gp.x, gp.y);
+      if (ni >= 0) {
+        // Pin/unpin toggle
+        GRAPH.nodes[ni].pinned = !GRAPH.nodes[ni].pinned;
+      }
+    }
+
+    function showTooltipForNode(ni, mx, my) {
+      const n = GRAPH.nodes[ni];
+      const tooltip = document.getElementById('graphTooltip');
+      if (!tooltip) return;
+
+      // Count connections and gather relation types
+      const neighbors = GRAPH.neighbors[ni] || new Set();
+      const edgeLabels = {};
+      GRAPH.edges.forEach(e => {
+        if (e.source === ni || e.target === ni) {
+          edgeLabels[e.label] = (edgeLabels[e.label] || 0) + 1;
+        }
+      });
+      const relInfo = Object.entries(edgeLabels).map(([r, c]) => `${r}: ${c}`).join(', ');
+
+      tooltip.style.display = 'block';
+      tooltip.style.left = (mx + 14) + 'px';
+      tooltip.style.top = (my + 14) + 'px';
+      tooltip.innerHTML = `
+    <div class="tt-name">${esc(n.label)}</div>
+    <div class="tt-info">Connections: ${neighbors.size}</div>
+    ${relInfo ? `<div class="tt-info" style="margin-top:2px">${esc(relInfo)}</div>` : ''}
+  `;
+    }
+
+    function hideTooltip() {
+      const tooltip = document.getElementById('graphTooltip');
+      if (tooltip) tooltip.style.display = 'none';
+    }
+
+    /* ---------- Toolbar actions ---------- */
+    function graphZoom(factor) {
+      GRAPH.transform.scale *= factor;
+      GRAPH.transform.scale = Math.max(0.05, Math.min(20, GRAPH.transform.scale));
+    }
+
+    function graphReset() {
+      if (!GRAPH.canvas) return;
+      GRAPH.transform = { x: GRAPH.canvas.width / 2, y: GRAPH.canvas.height / 2, scale: 1 };
+      GRAPH.highlightNode = null;
+      GRAPH.highlightNeighbors = new Set();
+      GRAPH.searchTerm = '';
+      const si = document.getElementById('graphSearch');
+      if (si) si.value = '';
+      // Re-randomize and restart sim
+      GRAPH.nodes.forEach((n, i) => {
+        const angle = (i / GRAPH.nodes.length) * Math.PI * 2;
+        const r = 150 + Math.random() * 200;
+        n.x = Math.cos(angle) * r;
+        n.y = Math.sin(angle) * r;
+        n.vx = 0; n.vy = 0; n.pinned = false;
+      });
+      GRAPH.simAlpha = 1;
+      GRAPH.simRunning = true;
+    }
+
+    function graphToggleLabels() {
+      GRAPH.showLabels = !GRAPH.showLabels;
+    }
+
+    function graphHighlightSearch(term) {
+      GRAPH.searchTerm = term.trim();
+      GRAPH.highlightNode = null;
+      GRAPH.highlightNeighbors = new Set();
+    }
+
+    /* ==========================================================================
+       Query Tab — ChatGPT-style with list view + conversation context
+       ========================================================================== */
+    const CHAT_LIMIT = 5;
+    let chatList = [];
+    let activeChatId = null;
+    let activeChatMsgs = [];
+    let chatViewMode = 'list'; // 'list' or 'chat'
+
+    function renderQueryTab(el, g) {
+      if (g.status !== 'complete') {
+        el.innerHTML = '<div style="color:var(--text3);padding:40px 0;text-align:center;">Query will be available once the pipeline completes.</div>';
+        return;
+      }
+      // Only do full init if root doesn't exist yet (first render)
+      if (!document.getElementById('querySectionRoot')) {
+        el.innerHTML = '<div class="query-section" id="querySectionRoot"></div>';
+        activeChatId = null;
+        activeChatMsgs = [];
+        chatViewMode = 'list';
+        loadChatList();
+      }
+      // Otherwise leave the current view (list or chat) as-is
+    }
+
+    async function loadChatList() {
+      try { chatList = await api(`/api/goals/${activeGoalId}/chats`); }
+      catch (e) { chatList = []; }
+      renderQueryView();
+    }
+
+    function renderQueryView() {
+      const root = document.getElementById('querySectionRoot');
+      if (!root) return;
+      if (chatViewMode === 'list') {
+        renderChatListView(root);
+      } else {
+        renderChatView(root);
+      }
+    }
+
+    /* ---------- LIST VIEW (like ChatGPT home) ---------- */
+    function renderChatListView(root) {
+      root.innerHTML = `
+    <div class="chat-header">
+      <h4>Knowledge Graph Chat</h4>
+      <div style="display:flex;gap:8px;align-items:center;">
+        ${chatList.length ? '<button class="chat-clear-btn" onclick="clearAllChats()">Clear All</button>' : ''}
+      </div>
+    </div>
+    <div class="chat-list-view" id="chatListContainer">
+      ${chatList.length ? chatList.slice().reverse().map(c => {
+        const date = c.created ? new Date(c.created).toLocaleDateString() : '';
+        const isFull = c.limit_reached;
+        return `
+          <div class="chat-list-item" onclick="openChatFromList('${c.id}')">
+            <div class="chat-list-icon"><svg width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M21 15a2 2 0 01-2 2H7l-4 4V5a2 2 0 012-2h14a2 2 0 012 2z"/></svg></div>
+            <div class="chat-list-info">
+              <div class="chat-list-title">${esc(c.title)}</div>
+              <div class="chat-list-meta">${c.message_count} message${c.message_count !== 1 ? 's' : ''} · ${date}</div>
+            </div>
+            <span class="chat-list-badge ${isFull ? 'full' : 'open'}">${isFull ? 'Full' : c.message_count + '/' + CHAT_LIMIT}</span>
+            <button class="chat-list-delete" onclick="event.stopPropagation();deleteChat('${c.id}')">&times;</button>
+          </div>`;
+      }).join('') : ''}
+    </div>
+    <div class="chat-input-row">
+      <input class="query-input" id="queryInput" placeholder="Start a new conversation..."
+             onkeydown="if(event.key==='Enter')runQuery()">
+      <button class="btn btn-primary" onclick="runQuery()">Send</button>
+    </div>
+  `;
+      if (!chatList.length) {
+        document.getElementById('chatListContainer').innerHTML = `
+      <div class="chat-empty">
+        <svg width="48" height="48" fill="none" stroke="currentColor" stroke-width="1.5" viewBox="0 0 24 24" style="opacity:.3">
+          <path d="M8 10h.01M12 10h.01M16 10h.01M9 16H5a2 2 0 01-2-2V6a2 2 0 012-2h14a2 2 0 012 2v8a2 2 0 01-2 2h-5l-5 5v-5z"/>
+        </svg>
+        <span>No conversations yet. Ask a question to get started.</span>
+      </div>`;
+      }
+    }
+
+    function openChatFromList(chatId) {
+      activeChatId = chatId;
+      chatViewMode = 'chat';
+      openChatMessages(chatId);
+    }
+
+    /* ---------- CHAT VIEW (conversation) ---------- */
+    function renderChatView(root) {
+      root.innerHTML = `
+    <div class="chat-header">
+      <div style="display:flex;align-items:center;gap:10px;">
+        <button class="btn btn-sm btn-outline" onclick="backToList()" title="Back to chats">← Chats</button>
+        <h4 id="chatTitle" style="margin:0;">Chat</h4>
+      </div>
+      <div style="display:flex;gap:8px;align-items:center;">
+        <span id="chatCounter" style="font-size:.72rem;color:var(--text3);"></span>
+        <button class="btn btn-sm btn-primary" onclick="startNewChatFromView()">+ New Chat</button>
+      </div>
+    </div>
+    <div class="chat-history" id="chatHistory"></div>
+    <div class="chat-input-row">
+      <input class="query-input" id="queryInput" placeholder="Ask a follow-up question..."
+             onkeydown="if(event.key==='Enter')runQuery()">
+      <button class="btn btn-primary" onclick="runQuery()">Send</button>
+    </div>
+  `;
+      renderChatMessages();
+      updateChatCounter();
+    }
+
+    async function openChatMessages(chatId) {
+      activeChatId = chatId;
+      chatViewMode = 'chat';
+      try {
+        const chat = await api(`/api/goals/${activeGoalId}/chats/${chatId}`);
+        activeChatMsgs = chat.messages || [];
+        renderQueryView();
+        const titleEl = document.getElementById('chatTitle');
+        if (titleEl) titleEl.textContent = chat.title || 'Chat';
+      } catch (e) {
+        activeChatMsgs = [];
+        renderQueryView();
+      }
+    }
+
+    function backToList() {
+      chatViewMode = 'list';
+      activeChatId = null;
+      activeChatMsgs = [];
+      // Ensure root container exists, recreate if needed
+      const content = document.getElementById('tabContent');
+      if (content && !document.getElementById('querySectionRoot')) {
+        content.innerHTML = '<div class="query-section" id="querySectionRoot"></div>';
+      }
+      loadChatList();
+    }
+
+    function startNewChatFromView() {
+      activeChatId = null;
+      activeChatMsgs = [];
+      chatViewMode = 'chat';
+      renderQueryView();
+      const titleEl = document.getElementById('chatTitle');
+      if (titleEl) titleEl.textContent = 'New Chat';
+      const input = document.getElementById('queryInput');
+      if (input) input.focus();
+    }
+
+    function updateChatCounter() {
+      const el = document.getElementById('chatCounter');
+      if (!el) return;
+      if (activeChatMsgs.length > 0) {
+        const left = CHAT_LIMIT - activeChatMsgs.length;
+        el.textContent = `${activeChatMsgs.length}/${CHAT_LIMIT} queries${left <= 0 ? ' (full)' : ''}`;
+        el.style.color = left <= 1 ? 'var(--red)' : 'var(--text3)';
+      } else {
+        el.textContent = `0/${CHAT_LIMIT} queries`;
+        el.style.color = 'var(--text3)';
+      }
+    }
+
+    function renderChatMessages() {
+      const container = document.getElementById('chatHistory');
+      if (!container) return;
+      if (!activeChatMsgs.length) {
+        container.innerHTML = '<div class="chat-empty"><span>Ask a question about your knowledge graph</span></div>';
+        return;
+      }
+      container.innerHTML = activeChatMsgs.map(entry => {
+        const time = entry.timestamp ? new Date(entry.timestamp).toLocaleString() : '';
+        return `
+      <div class="chat-msg user">
+        <div class="chat-bubble">${esc(entry.query)}</div>
+        <div class="chat-time">${esc(time)}</div>
+      </div>
+      <div class="chat-msg assistant">
+        <div class="chat-bubble"><div class="answer-text">${renderMarkdown(entry.answer)}</div></div>
+      </div>
+    `;
+      }).join('');
+      container.scrollTop = container.scrollHeight;
+    }
+
+    async function runQuery() {
+      const input = document.getElementById('queryInput');
+      if (!input) return;
+      const query = input.value.trim();
+      if (!query) return;
+
+      // Check limit
+      if (activeChatId && activeChatMsgs.length >= CHAT_LIMIT) {
+        alert(`This chat has reached the ${CHAT_LIMIT}-query limit. Please start a New Chat to continue.`);
+        return;
+      }
+
+      // If we're in list view, switch to chat view first
+      if (chatViewMode === 'list') {
+        activeChatId = null;
+        activeChatMsgs = [];
+        chatViewMode = 'chat';
+        renderQueryView();
+        // Re-grab input since DOM was replaced
+        const newInput = document.getElementById('queryInput');
+        if (newInput) newInput.value = query;
+      }
+
+      input.value = '';
+
+      const container = document.getElementById('chatHistory');
+      if (!container) return;
+
+      // Remove empty state
+      const empty = container.querySelector('.chat-empty');
+      if (empty) empty.remove();
+
+      // Show user message
+      const userMsg = document.createElement('div');
+      userMsg.className = 'chat-msg user';
+      userMsg.innerHTML = `<div class="chat-bubble">${esc(query)}</div>
+    <div class="chat-time">${new Date().toLocaleString()}</div>`;
+      container.appendChild(userMsg);
+
+      // Show loading
+      const loadingMsg = document.createElement('div');
+      loadingMsg.className = 'chat-msg assistant';
+      loadingMsg.innerHTML = '<div class="chat-bubble" style="color:var(--text3);">Thinking...</div>';
+      container.appendChild(loadingMsg);
+      container.scrollTop = container.scrollHeight;
+
+      try {
+        const resp = await api(`/api/goals/${activeGoalId}/query`, {
+          method: 'POST',
+          body: JSON.stringify({ query, top_k: 50, chat_id: activeChatId }),
+        });
+
+        loadingMsg.innerHTML = `<div class="chat-bubble"><div class="answer-text">${renderMarkdown(resp.answer)}</div></div>`;
+
+        // If new chat was created, update ID and title
+        if (resp.chat_id && !activeChatId) {
+          activeChatId = resp.chat_id;
+          const titleEl = document.getElementById('chatTitle');
+          if (titleEl) titleEl.textContent = query.length > 50 ? query.slice(0, 48) + '...' : query;
+          // Refresh chat list in background
+          try { chatList = await api(`/api/goals/${activeGoalId}/chats`); } catch (e) { }
+        }
+
+        activeChatMsgs.push({ query, answer: resp.answer, timestamp: new Date().toISOString() });
+        updateChatCounter();
+
+        if (resp.limit_reached) {
+          const warn = document.createElement('div');
+          warn.className = 'chat-msg assistant';
+          warn.innerHTML = `<div class="chat-bubble" style="border-color:var(--yellow);color:var(--text2);font-size:.82rem;">
+        This chat reached ${CHAT_LIMIT} queries. Click <strong>+ New Chat</strong> or <strong>← Chats</strong> to continue.
+      </div>`;
+          container.appendChild(warn);
+        }
+      } catch (e) {
+        loadingMsg.innerHTML = `<div class="chat-bubble"><div class="error-banner">${esc(e.message)}</div></div>`;
+      }
+      container.scrollTop = container.scrollHeight;
+    }
+
+    async function deleteChat(chatId) {
+      if (!confirm('Delete this chat?')) return;
+      try {
+        await api(`/api/goals/${activeGoalId}/chats/${chatId}`, { method: 'DELETE' });
+        chatList = chatList.filter(c => c.id !== chatId);
+        if (activeChatId === chatId) { activeChatId = null; activeChatMsgs = []; chatViewMode = 'list'; }
+        renderQueryView();
+      } catch (e) { alert('Failed: ' + e.message); }
+    }
+
+    async function clearAllChats() {
+      if (!confirm('Clear ALL chat history for this goal?')) return;
+      try {
+        await api(`/api/goals/${activeGoalId}/chats`, { method: 'DELETE' });
+        chatList = [];
+        activeChatId = null;
+        activeChatMsgs = [];
+        chatViewMode = 'list';
+        renderQueryView();
+      } catch (e) { alert('Failed: ' + e.message); }
+    }
+
+    /* ==========================================================================
+       Tab switching
+       ========================================================================== */
+    function switchTab(tabEl) {
+      currentTab = tabEl.dataset.tab;
+      // Stop graph animation if leaving graph tab
+      if (currentTab !== 'graph' && GRAPH.animFrame) {
+        cancelAnimationFrame(GRAPH.animFrame);
+        GRAPH.animFrame = null;
+      }
+      const g = goals.find(x => x.id === activeGoalId);
+      if (g) renderGoalView(g);
+    }
+
+    /* ==========================================================================
+       Create / Delete goal
+       ========================================================================== */
+    function showNewGoalModal() {
+      document.getElementById('newGoalModal').style.display = 'flex';
+      const input = document.getElementById('goalInput');
+      input.value = '';
+      setTimeout(() => input.focus(), 100);
+    }
+
+    function closeModal() {
+      document.getElementById('newGoalModal').style.display = 'none';
+    }
+
+    async function createGoal() {
+      const input = document.getElementById('goalInput');
+      const name = input.value.trim();
+      if (!name) return;
+      closeModal();
+      try {
+        const g = await api('/api/goals', {
+          method: 'POST',
+          body: JSON.stringify({ name }),
+        });
+        goals.push(g);
+        selectGoal(g.id);
+      } catch (e) {
+        alert('Failed to create goal: ' + e.message);
+      }
+    }
+
+    async function deleteGoal() {
+      if (!activeGoalId) return;
+      const g = goals.find(x => x.id === activeGoalId);
+      if (!confirm(`Delete "${g ? g.name : 'this goal'}" and all its data?`)) return;
+      try {
+        await api(`/api/goals/${activeGoalId}`, { method: 'DELETE' });
+        goals = goals.filter(x => x.id !== activeGoalId);
+        stopPolling();
+        // Clear graph cache if it was for this goal
+        if (graphGoalId === activeGoalId) { graphData = null; graphGoalId = null; }
+        activeGoalId = null;
+        renderGoalList();
+        document.getElementById('goalView').style.display = 'none';
+        document.getElementById('emptyState').style.display = 'flex';
+      } catch (e) {
+        alert('Failed to delete: ' + e.message);
+      }
+    }
+
+    function downloadGoal() {
+      if (!activeGoalId) return;
+      window.open(`/api/goals/${activeGoalId}/download`, '_blank');
+    }
+
+    /* ==========================================================================
+       Helpers
+       ========================================================================== */
+    function esc(s) {
+      const d = document.createElement('div');
+      d.textContent = s;
+      return d.innerHTML;
+    }
+
+    function renderMarkdown(raw) {
+      // Escape HTML first for safety
+      let text = esc(raw);
+
+      // Code blocks: ```lang\n...\n```
+      text = text.replace(/```(\w*)\n([\s\S]*?)```/g, (_, lang, code) =>
+        `<pre><code>${code.trim()}</code></pre>`);
+
+      // Inline code: `code`
+      text = text.replace(/`([^`]+)`/g, '<code>$1</code>');
+
+      // Split into lines for block-level processing
+      const lines = text.split('\n');
+      let html = '';
+      let inList = false;
+      let listType = '';
+      let inTable = false;
+      let tableHeader = false;
+
+      for (let i = 0; i < lines.length; i++) {
+        let line = lines[i];
+
+        // Table detection: line starts and ends with |
+        const isTableRow = /^\|(.+)\|$/.test(line.trim());
+        const isSeparator = /^\|[\s\-:|]+\|$/.test(line.trim());
+
+        if (isTableRow || isSeparator) {
+          // Close any open list
+          if (inList) { html += `</${listType}>`; inList = false; }
+
+          // Skip separator rows (|---|---|)
+          if (isSeparator) {
+            tableHeader = true;
+            continue;
+          }
+
+          // Parse cells
+          const cells = line.trim().replace(/^\||\|$/g, '').split('|').map(c => applyInline(c.trim()));
+
+          if (!inTable) {
+            // Start new table — first row is always header
+            html += '<table><thead><tr>';
+            cells.forEach(c => { html += `<th>${c}</th>`; });
+            html += '</tr></thead><tbody>';
+            inTable = true;
+            tableHeader = false;
+            continue;
+          }
+
+          // Body row
+          html += '<tr>';
+          cells.forEach(c => { html += `<td>${c}</td>`; });
+          html += '</tr>';
+          continue;
+        }
+
+        // Close table if we're no longer in table rows
+        if (inTable) {
+          html += '</tbody></table>';
+          inTable = false;
+          tableHeader = false;
+        }
+
+        // Headings
+        const headingMatch = line.match(/^(#{1,4})\s+(.+)$/);
+        if (headingMatch) {
+          if (inList) { html += `</${listType}>`; inList = false; }
+          const level = headingMatch[1].length;
+          html += `<h${level}>${applyInline(headingMatch[2])}</h${level}>`;
+          continue;
+        }
+
+        // Horizontal rule
+        if (/^(---|\*\*\*|___)$/.test(line.trim())) {
+          if (inList) { html += `</${listType}>`; inList = false; }
+          html += '<hr>';
+          continue;
+        }
+
+        // Blockquote
+        if (line.startsWith('&gt; ') || line === '&gt;') {
+          if (inList) { html += `</${listType}>`; inList = false; }
+          html += `<blockquote>${line.replace(/^&gt;\s?/, '')}</blockquote>`;
+          continue;
+        }
+
+        // Unordered list
+        const ulMatch = line.match(/^[\s]*[-*+]\s+(.+)$/);
+        if (ulMatch) {
+          if (!inList || listType !== 'ul') {
+            if (inList) html += `</${listType}>`;
+            html += '<ul>'; inList = true; listType = 'ul';
+          }
+          html += `<li>${applyInline(ulMatch[1])}</li>`;
+          continue;
+        }
+
+        // Ordered list
+        const olMatch = line.match(/^[\s]*\d+[.)]\s+(.+)$/);
+        if (olMatch) {
+          if (!inList || listType !== 'ol') {
+            if (inList) html += `</${listType}>`;
+            html += '<ol>'; inList = true; listType = 'ol';
+          }
+          html += `<li>${applyInline(olMatch[1])}</li>`;
+          continue;
+        }
+
+        // Close list if no longer in one
+        if (inList) { html += `</${listType}>`; inList = false; }
+
+        // Empty line → skip (paragraph break)
+        if (!line.trim()) { continue; }
+
+        // Regular paragraph
+        html += `<p>${applyInline(line)}</p>`;
+      }
+      if (inTable) html += '</tbody></table>';
+      if (inList) html += `</${listType}>`;
+      return html;
+    }
+
+    function applyInline(text) {
+      // Bold: **text** or __text__
+      text = text.replace(/\*\*(.+?)\*\*/g, '<strong>$1</strong>');
+      text = text.replace(/__(.+?)__/g, '<strong>$1</strong>');
+      // Italic: *text* or _text_
+      text = text.replace(/\*(.+?)\*/g, '<em>$1</em>');
+      text = text.replace(/_(.+?)_/g, '<em>$1</em>');
+      return text;
+    }
+
+    /* ==========================================================================
+       Init
+       ========================================================================== */
+    loadGoals();
+  </script>
+</body>
+
+</html>
